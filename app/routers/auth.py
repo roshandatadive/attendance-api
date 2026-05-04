@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,23 +37,14 @@ def signup(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User
 @router.post("/login", response_model=TokenResponse)
 def login(
     payload: LoginRequest,
-    db: Annotated[Session, Depends(get_db)] = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> TokenResponse:
     """
-    Login endpoint accepting JSON input with email and password.
-    Defensive approach: validates input safely without server crashes.
+    Login endpoint with JSON input.
+    Request body: {"email": "user@example.com", "password": "secret"}
     """
-    # Validate required fields exist before querying database
-    if not payload.email or not payload.password:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Missing required fields: email and password",
-        )
-
-    # Query database for user
+    # Validate credentials
     user = db.scalar(select(User).where(User.email == payload.email))
-    
-    # Verify credentials (timing-safe comparison with bcrypt)
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,5 +52,4 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Return JWT access token on success
     return TokenResponse(access_token=create_access_token(user))
