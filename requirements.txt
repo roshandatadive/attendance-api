@@ -8,4 +8,3 @@ PyJWT
 pytest
 httpx
 requests
-python-multipart
